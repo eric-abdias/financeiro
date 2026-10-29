@@ -33,7 +33,7 @@ export function IncomeForm({
 
   return (
     <form
-      className="grid gap-3 rounded-2xl border border-line bg-card p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+      className="grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
       onSubmit={(event) => {
         event.preventDefault();
         save();

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { addAvulso } from "@/app/actions";
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import { EntryRow } from "@/components/EntryRow";
 import { IncomeForm } from "@/components/IncomeForm";
 import { getDb } from "@/lib/db";
@@ -61,14 +62,8 @@ function Summary({ totals }: { totals: MonthTotals }) {
 
 function EntryList({ title, total, entries, empty, note }: { title: string; total?: string; entries: EntryView[]; empty: string; note?: string }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-card">
-      <header className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3">
-        <div>
-          <h2 className="font-serif text-xl">{title}</h2>
-          {note ? <p className="mt-1 text-sm text-muted">{note}</p> : null}
-        </div>
-        {total ? <p className="tabular-nums text-muted">{total}</p> : <p className="text-sm text-muted">não entra nos saldos</p>}
-      </header>
+    <CollapsibleSection title={title} total={total ?? "não entra nos saldos"}>
+      {note ? <p className={`px-4 py-3 text-sm text-muted ${entries.length > 0 ? "border-b border-line" : ""}`}>{note}</p> : null}
       {entries.length === 0 ? (
         <p className="px-4 py-6 text-sm text-muted">{empty}</p>
       ) : (
@@ -78,7 +73,7 @@ function EntryList({ title, total, entries, empty, note }: { title: string; tota
           ))}
         </ul>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
 
@@ -114,12 +109,14 @@ export default async function MonthPage({ params }: { params: Promise<{ ym: stri
         O que ficou em aberto continua neste mês. O saldo não passa para o mês seguinte.
       </p>
       <Summary totals={month.totals} />
-      <IncomeForm
-        year={month.year}
-        month={month.month}
-        baseCents={month.incomeBaseCents}
-        extraCents={month.incomeExtraCents}
-      />
+      <CollapsibleSection title="Receita" total={formatMoney(month.incomeBaseCents + month.incomeExtraCents)}>
+        <IncomeForm
+          year={month.year}
+          month={month.month}
+          baseCents={month.incomeBaseCents}
+          extraCents={month.incomeExtraCents}
+        />
+      </CollapsibleSection>
       <EntryList
         title="Falta pagar"
         total={formatMoney(month.totals.open)}
@@ -148,9 +145,8 @@ export default async function MonthPage({ params }: { params: Promise<{ ym: stri
           empty=""
         />
       ) : null}
-      <details className="rounded-2xl border border-line bg-card p-4">
-        <summary className="cursor-pointer font-medium">Lançar gasto avulso</summary>
-        <form action={addAvulso} className="mt-4 grid gap-3 sm:grid-cols-2">
+      <CollapsibleSection title="Lançar gasto avulso">
+        <form action={addAvulso} className="grid gap-3 p-4 sm:grid-cols-2">
           <input type="hidden" name="year" value={month.year} />
           <input type="hidden" name="month" value={month.month} />
           <label className="block text-sm sm:col-span-2">
@@ -183,7 +179,7 @@ export default async function MonthPage({ params }: { params: Promise<{ ym: stri
             Adicionar ao mês
           </button>
         </form>
-      </details>
+      </CollapsibleSection>
     </div>
   );
 }

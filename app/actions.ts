@@ -10,6 +10,7 @@ import {
   createCategory,
   ensureCurrentMonth,
   resyncCommitment,
+  saveEntryAmount,
   saveIncome,
 } from "@/lib/finance";
 import { parseMoney } from "@/lib/format";
@@ -36,7 +37,7 @@ export async function setEntryPaid(entryId: number, paid: boolean) {
 export async function setEntryAmount(entryId: number, amountCents: number | null) {
   await assertSession();
   const db = await getDb();
-  db.prepare("UPDATE entries SET amount_cents = ? WHERE id = ?").run(amountCents, entryId);
+  saveEntryAmount(db, entryId, amountCents);
   refresh();
 }
 

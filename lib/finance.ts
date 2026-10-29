@@ -96,7 +96,7 @@ function categoryOptions(byId: Map<number, CategoryRow>): CategoryOption[] {
 
 export function applies(commitment: CommitmentRow, year: number, month: number): boolean {
   if (!commitment.active) return false;
-  if (commitment.kind === "fixed_monthly" || commitment.kind === "variable_monthly") return true;
+  if (commitment.kind === "fixed_monthly" || commitment.kind === "variable_monthly" || commitment.kind === "carried_monthly") return true;
   if (commitment.kind === "annual") return commitment.due_month === month;
   if (!commitment.installment_start) return false;
   const [startYear, startMonth] = commitment.installment_start.split("-").map(Number);
@@ -126,6 +126,9 @@ function commitmentHint(commitment: CommitmentRow): string {
     return commitment.amount_cents == null
       ? "Entra todo mês, sem valor definido."
       : "Entra todo mês com esse valor. Um mês que ainda está vazio recebe o valor do compromisso.";
+  }
+  if (commitment.kind === "carried_monthly") {
+    return "O valor deste mês passa para os seguintes que ainda estavam com esse valor, ou vazios. Zero também segue.";
   }
   if (commitment.kind === "variable_monthly") return "A linha entra todo mês e o valor é preenchido quando a conta chega.";
   if (commitment.kind === "annual") {
@@ -198,6 +201,31 @@ function dropExpired(db: DB, monthId: number, year: number, month: number) {
   }
 }
 
+function previousCarriedAmount(db: DB, commitmentId: number, year: number, month: number): number | null | undefined {
+  const row = db
+    .prepare(
+      `SELECT e.amount_cents AS amount_cents
+       FROM entries e
+       JOIN months m ON m.id = e.month_id
+       WHERE e.commitment_id = ?
+         AND (m.year < ? OR (m.year = ? AND m.month < ?))
+       ORDER BY m.year DESC, m.month DESC
+       LIMIT 1`,
+    )
+    .get(commitmentId, year, year, month) as { amount_cents: number | null } | undefined;
+  if (!row) return undefined;
+  return row.amount_cents == null ? null : Number(row.amount_cents);
+}
+
+function openingAmount(db: DB, commitment: CommitmentRow, year: number, month: number): number | null {
+  if (commitment.kind === "variable_monthly") return null;
+  if (commitment.kind === "carried_monthly") {
+    const previous = previousCarriedAmount(db, commitment.id, year, month);
+    return previous === undefined ? commitment.amount_cents : previous;
+  }
+  return commitment.amount_cents;
+}
+
 export function ensureEntries(db: DB, monthId: number, year: number, month: number) {
   dropExpired(db, monthId, year, month);
   const existing = new Set(
@@ -206,7 +234,6 @@ export function ensureEntries(db: DB, monthId: number, year: number, month: numb
   );
   for (const commitment of liveCommitments(db)) {
     if (!applies(commitment, year, month) || existing.has(commitment.id)) continue;
-    const variable = commitment.kind === "variable_monthly";
     const invoice = commitment.invoice_detail ? 1 : 0;
     insertId(
       db,
@@ -217,7 +244,7 @@ export function ensureEntries(db: DB, monthId: number, year: number, month: numb
       commitment.id,
       commitment.name,
       commitment.category_id,
-      variable ? null : commitment.amount_cents,
+      openingAmount(db, commitment, year, month),
       invoice ? 0 : commitment.counts_in_total,
       invoice,
       1000 + commitment.sort,
@@ -297,6 +324,7 @@ export function loadMonth(db: DB, year: number, month: number, now = new Date())
       hintMonth: hintCents == null ? null : MONTHS[previous.month - 1].toLowerCase(),
       progress: commitment ? progressLabel(commitment, year, month) : null,
       manual: bool(entry.manual),
+      carried: commitment?.kind === "carried_monthly",
     };
   });
 
@@ -377,7 +405,7 @@ export function resyncCommitment(db: DB, commitmentId: number, now = new Date())
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
   const invoice = commitment.invoice_detail ? 1 : 0;
-  if (commitment.kind !== "variable_monthly" && commitment.amount_cents != null) {
+  if (commitment.kind !== "variable_monthly" && commitment.kind !== "carried_monthly" && commitment.amount_cents != null) {
     db.prepare(
       `UPDATE entries SET amount_cents = ? WHERE commitment_id = ? AND amount_cents IS NULL AND ${nonPastClause()}`,
     ).run(commitment.amount_cents, commitment.id, year, year, month);
@@ -403,7 +431,6 @@ export function resyncCommitment(db: DB, commitmentId: number, now = new Date())
       .get(Number(item.id), commitment.id) as { id: number; paid: number } | undefined;
     const on = applies(commitment, Number(item.year), Number(item.month));
     if (on && !entry) {
-      const variable = commitment.kind === "variable_monthly";
       const detail = commitment.invoice_detail ? 1 : 0;
       insertId(
         db,
@@ -414,7 +441,7 @@ export function resyncCommitment(db: DB, commitmentId: number, now = new Date())
         commitment.id,
         commitment.name,
         commitment.category_id,
-        variable ? null : commitment.amount_cents,
+        openingAmount(db, commitment, Number(item.year), Number(item.month)),
         detail ? 0 : commitment.counts_in_total,
         detail,
         1000 + commitment.sort,
@@ -430,6 +457,43 @@ export function ensureCurrentMonth(db: DB, now = new Date()) {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
   loadMonth(db, year, month, now);
+}
+
+export function saveEntryAmount(db: DB, entryId: number, amountCents: number | null) {
+  const row = db
+    .prepare(
+      `SELECT e.amount_cents, e.commitment_id, m.year, m.month, c.kind
+       FROM entries e
+       JOIN months m ON m.id = e.month_id
+       LEFT JOIN commitments c ON c.id = e.commitment_id
+       WHERE e.id = ?`,
+    )
+    .get(entryId) as
+    | { amount_cents: number | null; commitment_id: number | null; year: number; month: number; kind: string | null }
+    | undefined;
+  if (!row) return;
+  const previous = row.amount_cents == null ? null : Number(row.amount_cents);
+  db.prepare("UPDATE entries SET amount_cents = ? WHERE id = ?").run(amountCents, entryId);
+  if (row.kind !== "carried_monthly" || row.commitment_id == null || previous === amountCents) return;
+  db.prepare(
+    `UPDATE entries
+     SET amount_cents = ?
+     WHERE commitment_id = ?
+       AND month_id IN (SELECT id FROM months WHERE year > ? OR (year = ? AND month > ?))
+       AND (amount_cents IS NULL OR (? IS NOT NULL AND amount_cents = ?))`,
+  ).run(amountCents, Number(row.commitment_id), Number(row.year), Number(row.year), Number(row.month), previous, previous);
+  const latest = db
+    .prepare(
+      `SELECT e.amount_cents AS amount_cents
+       FROM entries e
+       JOIN months m ON m.id = e.month_id
+       WHERE e.commitment_id = ?
+       ORDER BY m.year DESC, m.month DESC
+       LIMIT 1`,
+    )
+    .get(Number(row.commitment_id)) as { amount_cents: number | null } | undefined;
+  if (!latest) return;
+  db.prepare("UPDATE commitments SET amount_cents = ? WHERE id = ?").run(latest.amount_cents, Number(row.commitment_id));
 }
 
 export function saveIncome(db: DB, year: number, month: number, baseCents: number, extraCents: number) {

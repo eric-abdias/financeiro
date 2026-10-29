@@ -1,5 +1,6 @@
 export const KINDS = [
   { id: "fixed_monthly", label: "Mensal fixo" },
+  { id: "carried_monthly", label: "Mensal que segue" },
   { id: "variable_monthly", label: "Mensal variável" },
   { id: "installment", label: "Parcelamento" },
   { id: "annual", label: "Anual" },
@@ -25,6 +26,7 @@ export type EntryView = {
   hintMonth: string | null;
   progress: string | null;
   manual: boolean;
+  carried: boolean;
 };
 
 export type MonthTotals = {

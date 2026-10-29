@@ -51,7 +51,7 @@ type Seed = {
 };
 
 const PRIMARY: Seed[] = [
-  { key: "sofia", name: "Sofia", path: "Mesada/Sofia", kind: "fixed_monthly", amount: 180, counts: true, sort: 10, aliases: ["sofia"], notes: "Na planilha de 2026 a mesada prevista era R$ 180. Os meses já lançados mantêm o valor da aba." },
+  { key: "sofia", name: "Sofia", path: "Mesada/Sofia", kind: "carried_monthly", amount: 180, counts: true, sort: 10, aliases: ["sofia"], notes: "Na planilha de 2026 a mesada prevista era R$ 180. Os meses já lançados mantêm o valor da aba. O valor de um mês passa para os seguintes que ainda estavam com o valor anterior, ou vazios." },
   { key: "cne", name: "CNE", path: "Colégio/Mensalidade", kind: "fixed_monthly", amount: 1242.35, counts: true, sort: 20, aliases: ["cne"] },
   { key: "livina", name: "Livina", path: "Veículo/Parcelamento", kind: "fixed_monthly", amount: 1072.84, counts: true, sort: 30, aliases: ["livina"] },
   { key: "enel", name: "Enel", path: "Energia/Enel", kind: "variable_monthly", counts: true, sort: 40, aliases: ["energia", "enel"] },

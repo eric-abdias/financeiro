@@ -59,6 +59,11 @@ export function CommitmentForm({
           defaultValue={commitment?.amountCents == null ? "" : centsToInput(commitment.amountCents)}
           className={field}
         />
+        {kind === "carried_monthly" ? (
+          <span className="mt-1 block text-muted">
+            O valor se altera no mês. Os seguintes que ainda estavam com esse valor, ou vazios, acompanham. Zero também segue.
+          </span>
+        ) : null}
       </label>
       {kind === "annual" ? (
         <label className="block text-sm">

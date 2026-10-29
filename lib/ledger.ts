@@ -89,6 +89,13 @@ function placeMeli(db: DB) {
   db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('meli_streaming', '1')").run();
 }
 
+function carrySofia(db: DB) {
+  const done = db.prepare("SELECT value FROM meta WHERE key = 'sofia_carried'").get() as { value: string } | undefined;
+  if (done) return;
+  db.prepare("UPDATE commitments SET kind = 'carried_monthly' WHERE key = 'sofia'").run();
+  db.prepare("INSERT INTO meta (key, value) VALUES ('sofia_carried', '1')").run();
+}
+
 function fillFixedAmounts(db: DB) {
   const done = db.prepare("SELECT value FROM meta WHERE key = 'fill_fixed_2026_10'").get() as { value: string } | undefined;
   if (done) return;
@@ -98,6 +105,7 @@ function fillFixedAmounts(db: DB) {
        SELECT c.amount_cents FROM commitments c
        WHERE c.id = entries.commitment_id
          AND c.kind != 'variable_monthly'
+         AND c.kind != 'carried_monthly'
          AND c.amount_cents IS NOT NULL
      )
      WHERE amount_cents IS NULL
@@ -107,6 +115,7 @@ function fillFixedAmounts(db: DB) {
          SELECT 1 FROM commitments c
          WHERE c.id = entries.commitment_id
            AND c.kind != 'variable_monthly'
+           AND c.kind != 'carried_monthly'
            AND c.amount_cents IS NOT NULL
        )`,
   ).run();
@@ -137,6 +146,7 @@ export function prepareLedger(db: DB) {
   forgetUnlinked(db);
   placeMicrosoft(db);
   placeMeli(db);
+  carrySofia(db);
   fillFixedAmounts(db);
   const done = db.prepare("SELECT value FROM meta WHERE key = 'living_2026_11'").get() as { value: string } | undefined;
   if (done) return;

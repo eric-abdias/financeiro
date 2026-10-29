@@ -36,3 +36,23 @@ button {
   outline: 2px solid var(--color-moss);
   outline-offset: 2px;
 }
+
+details.fold > summary {
+  list-style: none;
+}
+
+details.fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.fold > summary .chevron {
+  display: inline-block;
+}
+
+details.fold[open] > summary {
+  border-bottom: 1px solid var(--color-line);
+}
+
+details.fold[open] > summary .chevron {
+  transform: rotate(90deg);
+}

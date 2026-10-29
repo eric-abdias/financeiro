@@ -43,6 +43,11 @@ export function EntryRow({ entry }: { entry: EntryView }) {
             em {entry.hintMonth}: {formatMoney(entry.hintCents)}
           </p>
         ) : null}
+        {entry.carried ? (
+          <p className="text-sm text-muted">
+            Se o valor mudar, os meses seguintes que ainda estavam com esse valor, ou vazios, acompanham. Zero também segue.
+          </p>
+        ) : null}
         {error ? <p className="text-sm text-clay">{error}</p> : null}
         {!entry.countsInTotal && !entry.invoiceDetail ? (
           <button

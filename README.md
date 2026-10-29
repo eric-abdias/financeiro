@@ -11,6 +11,8 @@ Controle pessoal de receitas, contas do mês e parcelamentos. Outubro de 2026 é
 
 A receita tem base e extra. Se a base mudar, os meses seguintes que ainda estavam com o valor anterior acompanham. O extra fica só naquele mês. Empréstimo e capital de giro não entram na receita.
 
+A mesada segue a base. Se o valor mudar, os meses seguintes que ainda estavam com esse valor, ou vazios, acompanham. Zero também segue. Um mês que já estava com outro valor permanece.
+
 ## Requisitos
 
 Node.js 22 ou mais novo. O banco usa o SQLite que vem com o Node.
