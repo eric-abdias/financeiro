@@ -1,0 +1,10 @@
+node_modules
+.next
+*.db
+*.db-*
+*.db-journal
+*.log
+*.xlsx
+.env
+.env.*
+!.env.example

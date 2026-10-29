@@ -1,0 +1,22 @@
+services:
+  financeiro:
+    build:
+      context: .
+    container_name: financeiro
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      BASE_PATH: ""
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "3000"
+    networks:
+      - proxy
+    init: true
+
+networks:
+  proxy:
+    external: true
