@@ -55,4 +55,4 @@ O banco fica em `data/financeiro.db`, montado no container. A partir da publica�
 docker compose up -d --build
 ```
 
-O backup do banco, com o SQLite aberto, é o `backup-db.sh`. Ele grava em `/srv/backups/financeiro` e confere a integridade antes de aceitar o arquivo.
+O backup do banco, com o SQLite aberto, é o `backup-financeiro.sh`. Na VPS ele fica em `/usr/local/sbin/backup-financeiro.sh`. Grava em `/srv/backups/financeiro`, confere a integridade e mantém os 7 arquivos mais recentes. O `backup-db.sh` foi só o teste.
